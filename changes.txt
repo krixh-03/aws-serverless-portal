@@ -1,0 +1,169 @@
+DISCREPANCIES BETWEEN PROJECT REPORT AND ACTUAL CODEBASE
+=========================================================
+
+Document: Major Team-11 (3).pdf (latest version, 57 pages)
+
+Status of previously identified issues and any remaining problems.
+
+
+===========================================================================
+FIXED ISSUES (no action needed)
+===========================================================================
+
+[FIXED] Chapter 5, Section 5.3 — Now correctly lists Java 21 (Amazon
+        Corretto) instead of Python.
+
+[FIXED] Chapter 5, Section 5.4 — Now shows actual Java code from
+        RegisterHandler.java (BCrypt, UserEntity, DynamoDB putItem)
+        instead of the Python placeholder.
+
+[FIXED] Abstract — Now clarifies that S3 and CloudFront are "designed to
+        be" used and that "the frontend is served locally using the Vite
+        development server."
+
+[FIXED] Chapter 1, Section 1.3 — Now states that the frontend uses React
+        with TypeScript via Vite, and S3/CloudFront are future enhancements.
+
+[FIXED] Chapter 3, Section 3.2 — Now correctly describes security at two
+        levels: IAM for service-to-service permissions, and BCrypt + JWT
+        for user authentication.
+
+[FIXED] Chapter 3, Sections 3.3.2 and 3.3.3 — Both now state that the
+        frontend uses React + TypeScript + Vite locally, and S3/CloudFront
+        are planned as future enhancements.
+
+[FIXED] Chapter 5, Section 5.1 (Implementation intro) — Now says the
+        frontend is "developed using React with TypeScript and built using
+        Vite."
+
+[FIXED] Chapter 8 — Conclusion now includes quantified results: 89%
+        latency reduction, <$0.05/month cost, ~7s cold start, <30ms warm
+        overhead for non-auth endpoints.
+
+
+===========================================================================
+REMAINING ISSUES (still need to be fixed)
+===========================================================================
+
+
+---------------------------------------------------------------------------
+1. Chapter 1 — Introduction, main body paragraph (page 1, last paragraph)
+---------------------------------------------------------------------------
+CURRENT (still inaccurate):
+  "Static web content is hosted using Amazon S3, and global content
+  delivery is accelerated through Amazon CloudFront. These services
+  work together to build a fully serverless web application that can
+  handle large numbers of users efficiently."
+
+  This paragraph still states S3 and CloudFront as actively implemented
+  without any qualification, even though the Abstract and Section 1.3
+  have been fixed.
+
+CHANGE:
+  Reword to match the rest of the report:
+  "Static web content is designed to be hosted using Amazon S3, with
+  global content delivery planned through Amazon CloudFront. In the
+  current implementation, the frontend is served locally using the
+  Vite development server. These services work together to form a
+  fully serverless web application architecture."
+
+
+---------------------------------------------------------------------------
+2. Chapter 1, Section 1.3 — Duplicate paragraph
+---------------------------------------------------------------------------
+CURRENT (formatting issue):
+  Section 1.3 contains two nearly identical paragraphs back to back:
+
+  Paragraph 1: "...the frontend is developed using React with TypeScript
+  and is served locally using the Vite development server, while
+  deployment using S3 and CloudFront is planned as a future enhancement."
+
+  Paragraph 2: "In the current implementation, the frontend is developed
+  using React with TypeScript and is served locally using the Vite
+  development server during testing. Deployment of static content using
+  Amazon S3 and CloudFront is considered as a future enhancement."
+
+CHANGE:
+  Remove the duplicate. Keep only one paragraph (the second one reads
+  more naturally). Delete the first occurrence.
+
+
+---------------------------------------------------------------------------
+3. Chapter 5, Section 5.3 — Technologies table missing frontend stack
+---------------------------------------------------------------------------
+CURRENT (incomplete):
+  The technologies table lists: AWS Lambda, Amazon API Gateway, Amazon
+  DynamoDB, Amazon S3, Amazon CloudWatch, and Java 21. But it does not
+  list the actual frontend technologies used in the implementation.
+
+CHANGE:
+  Add the following entries to the technologies table:
+
+  React 18         | JavaScript library used to build the frontend
+                   | Single-Page Application (SPA) with component-based
+                   | architecture.
+
+  TypeScript 5.4   | Typed superset of JavaScript used for frontend
+                   | development, providing compile-time type checking
+                   | and improved code quality.
+
+  Vite 5.2         | Frontend build tool and development server providing
+                   | fast hot module replacement (HMR) and optimized
+                   | production builds.
+
+
+---------------------------------------------------------------------------
+4. Chapter 5, Section 5.3 — Amazon S3 entry still implies active use
+---------------------------------------------------------------------------
+CURRENT (misleading):
+  "Amazon S3 — Amazon S3 is used to store and host static website files
+  such as HTML, CSS, and JavaScript. It provides reliable storage and
+  allows easy access to web portal content."
+
+  This is written as if S3 is currently in use, contradicting the rest
+  of the updated report.
+
+CHANGE:
+  Reword to:
+  "Amazon S3 — Amazon S3 is designed to store and host the React
+  frontend build output in production. In the current implementation,
+  the frontend is served locally using Vite. S3 static hosting is
+  planned as a future deployment enhancement."
+
+
+---------------------------------------------------------------------------
+5. Chapter 5, Section 5.4 — Explanation paragraph doesn't match code
+---------------------------------------------------------------------------
+CURRENT (inaccurate):
+  "This sample code shows how an AWS Lambda function receives a request,
+  processes the user action (login or registration), and returns a
+  response through API Gateway."
+
+  But the code shown is specifically the RegisterHandler (registration
+  only), not login. The explanation should match the code.
+
+CHANGE:
+  Reword to:
+  "This sample code shows how the RegisterHandler Lambda function
+  receives a registration request, validates the input fields, hashes
+  the password using BCrypt, creates a UserEntity with a DynamoDB
+  single-table key structure (PK and SK), stores it in DynamoDB using
+  the AWS SDK v2 Enhanced Client, and returns a JSON response through
+  API Gateway."
+
+
+---------------------------------------------------------------------------
+6. Chapter 5, Section 5.3 — Technologies table still mentions
+   "HTML, CSS, JavaScript" for Amazon S3
+---------------------------------------------------------------------------
+CURRENT (inaccurate):
+  The S3 description says "static website files such as HTML, CSS, and
+  JavaScript."
+
+  The actual frontend output is a React + TypeScript build (compiled
+  by Vite into optimized JS bundles), not hand-written HTML/CSS/JS files.
+
+CHANGE:
+  If keeping the S3 entry, change "HTML, CSS, and JavaScript" to
+  "the compiled React application build output (HTML, CSS, and
+  JavaScript bundles generated by Vite)."

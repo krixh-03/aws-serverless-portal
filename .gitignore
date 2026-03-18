@@ -1,0 +1,29 @@
+# Dependencies
+frontend/node_modules/
+.venv/
+
+# Build output
+backend/auth-service/build/
+backend/content-service/build/
+frontend/dist/
+infrastructure/.aws-sam/
+
+# IDE / Editor
+.cursor/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Environment files with secrets
+frontend/.env.local
+
+# SAM local
+infrastructure/localstack-data/
+
+# Vite cache
+frontend/node_modules/.vite/

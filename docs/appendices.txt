@@ -1,0 +1,476 @@
+CHAPTER - 11. APPENDICES
+
+The appendices provide supporting materials for replication, validation, and further
+development of the AWS Serverless Web Portal project. This section includes the system
+architecture structure, cloud service configuration, environment setup, deployment
+commands, API endpoints, and system outputs used during the implementation of the project.
+
+
+================================================================================
+Appendix A - AWS Serverless Architecture
+================================================================================
+
+The AWS Serverless Web Portal is built using a serverless cloud architecture where
+backend services run without managing traditional servers. The system uses Java 21
+on ARM64 (AWS Graviton) for backend Lambda functions and React with TypeScript for
+the frontend, deployed via AWS SAM (Serverless Application Model).
+
+Components Used
+-------------------------------------------------------------------------------
+AWS Service              | Function
+-------------------------------------------------------------------------------
+AWS Lambda (Java 21)     | Executes backend logic (auth, content) in response
+                         | to HTTP requests. Runs on ARM64 architecture.
+Amazon HTTP API Gateway  | Routes API requests from users to Lambda functions.
+                         | Chosen over REST API for 71% lower cost.
+Amazon DynamoDB          | Stores application data (users, content) in a
+                         | scalable NoSQL database using single-table design.
+Amazon S3                | Hosts static frontend files (React build output).
+Amazon CloudWatch        | Collects Lambda execution logs and metrics for
+                         | performance monitoring.
+AWS IAM                  | Manages least-privilege access roles for Lambda
+                         | functions to access DynamoDB.
+AWS CloudFormation       | Provisions all infrastructure via SAM template
+                         | (Infrastructure-as-Code).
+-------------------------------------------------------------------------------
+
+System Workflow
+-------------------------------------------------------------------------------
+1. Users access the web portal through a browser at the frontend URL.
+2. The React frontend application is served from Amazon S3 (or locally via Vite
+   dev server during development on port 5173).
+3. API requests from the frontend are sent to Amazon HTTP API Gateway.
+4. API Gateway routes requests to the appropriate AWS Lambda function based on
+   the endpoint path (/auth/login, /auth/register, /content).
+5. Lambda functions (Java 21, ARM64) process the request:
+   - Auth functions verify credentials via BCrypt and generate JWT tokens.
+   - Content functions read/write items to DynamoDB.
+6. Lambda interacts with DynamoDB using the AWS SDK v2 Enhanced Client.
+7. The JSON response is returned to the user through the API Gateway.
+
+
+================================================================================
+Appendix B - Project Folder Structure
+================================================================================
+
+serverless-portal/
+|
+|-- backend/
+|   |-- auth-service/
+|   |   |-- build.gradle                        # Gradle build config (Shadow plugin)
+|   |   |-- settings.gradle                     # Gradle project name
+|   |   |-- gradlew                             # Gradle wrapper (Unix)
+|   |   |-- gradlew.bat                         # Gradle wrapper (Windows)
+|   |   |-- gradle/
+|   |   |   |-- wrapper/
+|   |   |       |-- gradle-wrapper.properties   # Gradle wrapper version config
+|   |   |-- src/
+|   |       |-- main/
+|   |           |-- java/
+|   |               |-- com/
+|   |                   |-- portal/
+|   |                       |-- auth/
+|   |                           |-- LoginHandler.java      # Lambda: user login
+|   |                           |-- RegisterHandler.java   # Lambda: user registration
+|   |                           |-- UserEntity.java        # DynamoDB entity bean
+|   |
+|   |-- content-service/
+|       |-- build.gradle                        # Gradle build config (Shadow plugin)
+|       |-- settings.gradle                     # Gradle project name
+|       |-- src/
+|           |-- main/
+|               |-- java/
+|                   |-- com/
+|                       |-- portal/
+|                           |-- content/
+|                               |-- ContentHandler.java    # Lambda: list/create content
+|                               |-- ContentItem.java       # DynamoDB entity bean
+|
+|-- frontend/
+|   |-- index.html                  # HTML entry point
+|   |-- package.json                # Node.js dependencies and scripts
+|   |-- package-lock.json           # Locked dependency versions
+|   |-- tsconfig.json               # TypeScript configuration
+|   |-- vite.config.ts              # Vite dev server + proxy configuration
+|   |-- .env.local                  # Local environment variables (API URL)
+|   |-- .env.example                # Example env file for developers
+|   |-- src/
+|       |-- main.tsx                # React app entry point
+|       |-- vite-env.d.ts           # Vite TypeScript declarations
+|       |-- context/
+|       |   |-- AuthContext.tsx      # Authentication context (login/logout/JWT)
+|       |-- components/
+|           |-- Login.tsx           # Login page component
+|           |-- Dashboard.tsx       # Dashboard page component
+|
+|-- infrastructure/
+|   |-- template.yaml               # AWS SAM template (Lambda, DynamoDB, API GW)
+|   |-- samconfig.toml              # SAM deployment configuration
+|   |-- docker-compose.yml          # LocalStack container for local development
+|   |-- localstack-data/            # LocalStack persistent data volume
+|
+|-- scripts/
+|   |-- create-local-table.sh       # Creates DynamoDB table in LocalStack
+|   |-- seed-local.sh               # Seeds demo user into LocalStack DynamoDB
+|   |-- benchmark.sh                # Cold/warm start performance benchmark
+|
+|-- docs/
+|   |-- performance.md              # Performance analysis and evaluation report
+|
+|-- README.md                       # Project overview and setup instructions
+|-- README_DEV.md                   # AWS cost guardrails and development rules
+
+
+================================================================================
+Appendix C - Environment Setup
+================================================================================
+
+Prerequisites
+-------------------------------------------------------------------------------
+The following tools must be installed before setting up the project:
+
+1. Java Development Kit (JDK) 21
+   - Required for compiling Lambda function source code.
+   - Download: https://adoptium.net/ (Eclipse Temurin 21)
+   - Verify:  java --version
+
+2. Gradle (via wrapper)
+   - The project includes a Gradle wrapper (gradlew / gradlew.bat).
+   - No separate Gradle installation required.
+   - Verify:  cd backend/auth-service && ./gradlew --version
+
+3. Node.js (v18+) and npm
+   - Required for the React/TypeScript frontend.
+   - Download: https://nodejs.org/
+   - Verify:  node --version && npm --version
+
+4. AWS CLI v2
+   - Required for interacting with AWS services.
+   - Install:  https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html
+   - Verify:  aws --version
+
+5. AWS SAM CLI
+   - Required for building and deploying serverless applications.
+   - Install via pipx:
+       sudo apt install pipx
+       pipx install aws-sam-cli
+   - Verify:  sam --version
+
+6. Docker Desktop
+   - Required for LocalStack (local AWS emulator) and SAM local testing.
+   - Download: https://www.docker.com/products/docker-desktop/
+   - Verify:  docker --version
+
+Configure AWS CLI
+-------------------------------------------------------------------------------
+Run the following command and enter your credentials:
+
+   aws configure --profile serverless-portal
+
+   AWS Access Key ID:      <your-access-key>
+   AWS Secret Access Key:  <your-secret-key>
+   Default region name:    us-east-1
+   Default output format:  json
+
+Install Frontend Dependencies
+-------------------------------------------------------------------------------
+   cd frontend
+   npm install
+
+Build Backend Services
+-------------------------------------------------------------------------------
+   cd backend/auth-service
+   ./gradlew shadowJar
+
+   cd backend/content-service
+   ./gradlew shadowJar
+
+Start LocalStack (Local Development)
+-------------------------------------------------------------------------------
+   cd infrastructure
+   docker compose up -d
+
+   # Create DynamoDB table locally
+   bash scripts/create-local-table.sh
+
+   # Seed demo user (demo@test.com / password)
+   bash scripts/seed-local.sh
+
+
+================================================================================
+Appendix D - Deployment Commands
+================================================================================
+
+Build the Serverless Application
+-------------------------------------------------------------------------------
+   cd infrastructure
+   sam build
+
+Deploy to AWS (First Time - Guided)
+-------------------------------------------------------------------------------
+   sam deploy --guided --profile serverless-portal
+
+   Prompts and recommended responses:
+   - Stack Name:                    serverless-portal
+   - AWS Region:                    us-east-1
+   - Confirm changes before deploy: y
+   - Allow SAM CLI IAM role creation: Y
+   - Disable rollback:              N
+   - AuthLoginFunction has no auth:  y
+   - AuthRegisterFunction has no auth: y
+   - ContentFunction has no auth:    y
+   - Save arguments to config file:  Y
+   - SAM configuration file:         samconfig.toml
+   - SAM configuration environment:  default
+
+Deploy to AWS (Subsequent Deploys)
+-------------------------------------------------------------------------------
+   cd infrastructure
+   sam build && sam deploy --profile serverless-portal
+
+Start Frontend Development Server
+-------------------------------------------------------------------------------
+   cd frontend
+   npm run dev
+
+   The frontend starts at http://localhost:5173 with a proxy configured
+   in vite.config.ts to forward /api requests to the AWS API Gateway.
+
+Run Performance Benchmark
+-------------------------------------------------------------------------------
+   bash scripts/benchmark.sh <API_GATEWAY_URL>
+
+   Example:
+   bash scripts/benchmark.sh https://ecxl4a10e2.execute-api.us-east-1.amazonaws.com
+
+Tear Down AWS Stack (Stop All Costs)
+-------------------------------------------------------------------------------
+   sam delete --stack-name serverless-portal --profile serverless-portal \
+     --region us-east-1 --no-prompts
+
+
+================================================================================
+Appendix E - API Endpoints
+================================================================================
+
+Base URL:  https://<api-id>.execute-api.us-east-1.amazonaws.com
+
+-------------------------------------------------------------------------------
+Endpoint         | Method | Description
+-------------------------------------------------------------------------------
+/auth/login      | POST   | Authenticates a user with email and password.
+                 |        | Returns JWT token, user details, cold start
+                 |        | metrics (isColdStart, initMs, requestMs).
+                 |        |
+                 |        | Request Body:
+                 |        |   { "email": "demo@test.com",
+                 |        |     "password": "password" }
+                 |        |
+                 |        | Response (200):
+                 |        |   { "token": "eyJhbG...",
+                 |        |     "user": { "id": "demo-user-1", ... },
+                 |        |     "isColdStart": true,
+                 |        |     "initMs": 918,
+                 |        |     "requestMs": 4248 }
+-------------------------------------------------------------------------------
+/auth/register   | POST   | Creates a new user account. Hashes password
+                 |        | with BCrypt before storing in DynamoDB.
+                 |        |
+                 |        | Request Body:
+                 |        |   { "email": "user@example.com",
+                 |        |     "password": "securePass123",
+                 |        |     "name": "John Doe" }
+                 |        |
+                 |        | Response (200):
+                 |        |   { "message": "User registered",
+                 |        |     "userId": "usr_abc123" }
+-------------------------------------------------------------------------------
+/content         | GET    | Retrieves all content items for the
+                 |        | authenticated user from DynamoDB.
+                 |        |
+                 |        | Response (200):
+                 |        |   { "items": [ { "title": "...",
+                 |        |     "body": "...", "createdAt": "..." } ] }
+-------------------------------------------------------------------------------
+/content         | POST   | Creates a new content item in DynamoDB.
+                 |        |
+                 |        | Request Body:
+                 |        |   { "title": "My Article",
+                 |        |     "body": "Article content here..." }
+                 |        |
+                 |        | Response (200):
+                 |        |   { "message": "Content created",
+                 |        |     "itemId": "cnt_xyz789" }
+-------------------------------------------------------------------------------
+
+
+================================================================================
+Appendix F - Hardware & Software Configuration
+================================================================================
+
+Development Machine
+-------------------------------------------------------------------------------
+Category              | Specification
+-------------------------------------------------------------------------------
+Processor             | Intel Core i5 / AMD Ryzen 5 or higher
+RAM                   | Minimum 8 GB
+Storage               | 256 GB SSD
+Operating System      | Windows 10/11 with WSL2 (Ubuntu)
+Docker                | Docker Desktop for Windows (WSL2 backend)
+-------------------------------------------------------------------------------
+
+Software Stack
+-------------------------------------------------------------------------------
+Component             | Technology                | Version
+-------------------------------------------------------------------------------
+Backend Language      | Java (Amazon Corretto)    | 21
+Build Tool            | Gradle (Shadow plugin)    | 8.5 (wrapper)
+Frontend Framework    | React                     | 18.2.0
+Frontend Language     | TypeScript                | 5.4.5
+Frontend Build Tool   | Vite                      | 5.2.0
+HTTP Client           | Axios                     | 1.7.2
+Routing               | React Router DOM          | 6.22.3
+Password Hashing      | BCrypt (jBCrypt)          | 0.4
+JWT Library           | JJWT (io.jsonwebtoken)    | 0.12.5
+AWS SDK               | AWS SDK v2 Enhanced Client| 2.25.x
+-------------------------------------------------------------------------------
+
+AWS Cloud Configuration
+-------------------------------------------------------------------------------
+Parameter             | Value
+-------------------------------------------------------------------------------
+Cloud Platform        | Amazon Web Services (AWS)
+Region                | us-east-1 (N. Virginia)
+Lambda Runtime        | Java 21 (Amazon Corretto)
+Lambda Architecture   | ARM64 (AWS Graviton)
+Lambda Memory         | 512 MB
+Lambda Timeout        | 10 seconds
+API Gateway Type      | HTTP API (v2)
+Database              | DynamoDB (on-demand billing)
+IaC Tool              | AWS SAM CLI
+Deployment Package    | ZIP (shadow JAR, ~16 MB)
+-------------------------------------------------------------------------------
+
+Local Development Tools
+-------------------------------------------------------------------------------
+Tool                  | Purpose
+-------------------------------------------------------------------------------
+AWS CLI v2            | AWS service interaction from command line
+AWS SAM CLI           | Build, test, and deploy serverless applications
+Docker Desktop        | Container runtime for LocalStack
+LocalStack            | Local AWS service emulator (DynamoDB, Lambda, API GW)
+Vite Dev Server       | Frontend development server with hot reload + proxy
+WSL2 (Ubuntu)         | Linux environment for running shell scripts
+curl                  | HTTP client for API testing and benchmarking
+-------------------------------------------------------------------------------
+
+
+================================================================================
+Appendix G - Sample Output
+================================================================================
+
+Example: Cold Start Benchmark Output (benchmark.sh)
+-------------------------------------------------------------------------------
+
+=== Cold start tests (60s gap to force cold start) ===
+--- Cold Run 1 ---
+{"isColdStart":true,"requestMs":4248,"initMs":918,"user":{"id":"demo-user-1",
+"email":"demo@test.com","role":"user"},"token":"eyJhbGciOiJIUzI1NiJ9..."}
+TIME_TOTAL: 6.950123s
+
+(waiting 60s for container to go cold...)
+
+--- Cold Run 2 ---
+{"isColdStart":false,"requestMs":569,"initMs":918,"user":{"id":"demo-user-1",
+"email":"demo@test.com","role":"user"},"token":"eyJhbGciOiJIUzI1NiJ9..."}
+TIME_TOTAL: 1.440567s
+
+(waiting 60s for container to go cold...)
+
+--- Cold Run 3 ---
+{"isColdStart":false,"requestMs":525,"initMs":918,"user":{"id":"demo-user-1",
+"email":"demo@test.com","role":"user"},"token":"eyJhbGciOiJIUzI1NiJ9..."}
+TIME_TOTAL: 2.390234s
+
+
+Example: Warm Start Benchmark Output (benchmark.sh)
+-------------------------------------------------------------------------------
+
+=== Warm start tests (back-to-back, 2s gap) ===
+--- Warm Run 1 ---
+{"isColdStart":false,"requestMs":474,"initMs":918,"user":{"id":"demo-user-1",
+"email":"demo@test.com","role":"user"},"token":"eyJhbGciOiJIUzI1NiJ9..."}
+TIME_TOTAL: 1.246610s
+
+--- Warm Run 2 ---
+{"isColdStart":false,"requestMs":455,"initMs":918,"user":{"id":"demo-user-1",
+"email":"demo@test.com","role":"user"},"token":"eyJhbGciOiJIUzI1NiJ9..."}
+TIME_TOTAL: 1.341056s
+
+--- Warm Run 3 ---
+{"isColdStart":false,"requestMs":473,"initMs":918,"user":{"id":"demo-user-1",
+"email":"demo@test.com","role":"user"},"token":"eyJhbGciOiJIUzI1NiJ9..."}
+TIME_TOTAL: 1.306815s
+
+
+Performance Metrics Summary
+-------------------------------------------------------------------------------
+Test Type   | Run | isColdStart | initMs | requestMs | TIME_TOTAL
+-------------------------------------------------------------------------------
+Cold Start  |  1  | true        | 918 ms | 4,248 ms  | 6.95 s
+Cold Start  |  2  | false       | 918 ms |   569 ms  | 1.44 s
+Cold Start  |  3  | false       | 918 ms |   525 ms  | 2.39 s
+Warm Start  |  1  | false       | 918 ms |   474 ms  | 1.25 s
+Warm Start  |  2  | false       | 918 ms |   455 ms  | 1.34 s
+Warm Start  |  3  | false       | 918 ms |   473 ms  | 1.31 s
+-------------------------------------------------------------------------------
+
+Key:
+  isColdStart  - true only on the very first invocation (JVM + SDK initialized)
+  initMs       - one-time static initializer duration (recorded once, reused)
+  requestMs    - handler execution time for this request
+  TIME_TOTAL   - end-to-end latency including network round-trip (curl measurement)
+
+
+================================================================================
+Appendix H - Future Integration APIs
+================================================================================
+
+The following APIs and services can be integrated into the system for advanced
+functionality in future iterations:
+
+-------------------------------------------------------------------------------
+API / Service              | Purpose
+-------------------------------------------------------------------------------
+AWS Lambda SnapStart       | Reduce Java cold start latency by 50-80% via
+                           | CRaC (Coordinated Restore at Checkpoint) snapshots.
+                           | Highest priority future improvement.
+AWS Lambda Power Tuning    | Automated tool to find optimal memory/cost balance
+                           | across 128 MB to 10,240 MB configurations.
+AWS Cognito                | Production-grade user authentication and identity
+                           | management with MFA, social login, and user pools.
+                           | Replaces custom JWT implementation.
+Amazon CloudFront          | Content Delivery Network for sub-50ms frontend
+                           | delivery globally. Reduces network latency component.
+AWS WAF                    | Web Application Firewall for rate limiting,
+                           | SQL injection prevention, and DDoS protection.
+AWS X-Ray                  | Distributed tracing for end-to-end request
+                           | visibility across Lambda, API Gateway, and DynamoDB.
+Amazon DynamoDB DAX        | In-memory caching layer for DynamoDB providing
+                           | microsecond read latency for frequently accessed data.
+Amazon SNS                 | Real-time push notifications for user alerts
+                           | and system event broadcasting.
+Amazon SES                 | Email service for user registration confirmation,
+                           | password reset, and notification emails.
+GraalVM Native Image       | Compile Java to native binary for sub-200ms cold
+                           | starts. High complexity but eliminates JVM overhead.
+DynamoDB Global Tables     | Multi-region replication for disaster recovery
+                           | and reduced latency for geographically distributed users.
+Stripe API                 | Payment gateway integration for premium features
+                           | or subscription-based access to portal content.
+-------------------------------------------------------------------------------
+
+Priority Recommendation:
+  For the next iteration, AWS Lambda SnapStart (low effort, high impact) and
+  Lambda Power Tuning (find cheapest memory config meeting latency SLA) would
+  yield the best return on investment without requiring architectural changes.

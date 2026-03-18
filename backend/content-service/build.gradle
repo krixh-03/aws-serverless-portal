@@ -1,0 +1,35 @@
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.amazonaws:aws-lambda-java-core:1.2.3'
+    implementation 'com.amazonaws:aws-lambda-java-events:3.11.4'
+
+    implementation 'software.amazon.awssdk:dynamodb-enhanced:2.25.0'
+    implementation 'software.amazon.awssdk:dynamodb:2.25.0'
+    implementation 'software.amazon.awssdk:regions:2.25.0'
+    implementation 'software.amazon.awssdk:url-connection-client:2.25.0'
+
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.16.0'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// Use the default shadowJar task provided by the Shadow plugin
+tasks.named('shadowJar') {
+    archiveClassifier.set('all')
+}
+

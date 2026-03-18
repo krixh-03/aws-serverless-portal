@@ -1,0 +1,5 @@
+{
+  "httpMethod": "POST",
+  "path": "/content",
+  "body": "{\"title\":\"First item\",\"body\":\"Hello from LocalStack\"}"
+}

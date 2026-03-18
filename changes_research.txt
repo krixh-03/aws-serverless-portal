@@ -1,0 +1,260 @@
+DISCREPANCIES BETWEEN IEEE RESEARCH PAPER AND ACTUAL CODEBASE
+================================================================
+
+Document: 23EG505R51_CSE_Katamoni Abhishek Goud_UG_Project Report_v1_16-03-2026 new.pdf
+Format:   IEEE conference/journal paper (6 pages)
+
+Below are the sections in the IEEE research paper that do not match the
+actual implementation in the serverless-portal codebase. Each entry lists
+the section, what the paper currently says, and what it should say.
+
+
+---------------------------------------------------------------------------
+1. Section IV (Serverless Computing Architecture) — CloudFront & S3
+---------------------------------------------------------------------------
+CURRENT (inaccurate):
+  "Amazon S3 is used to host static web resources, including HTML, CSS
+  as well as JavaScript files. Amazon CloudFront is a content delivery
+  network (CDN) that is incorporated to enhance worldwide performance."
+
+CHANGE:
+  These services are not deployed in the actual system. The frontend is
+  a React + TypeScript SPA served locally via the Vite development server
+  (port 5173). Either:
+  (a) Reword to state that S3 and CloudFront are part of the designed
+      architecture but were not deployed in the current implementation,
+      and that the frontend is served locally during development/testing.
+  (b) Or actually deploy them by adding S3 bucket and CloudFront
+      distribution resources to infrastructure/template.yaml.
+
+
+---------------------------------------------------------------------------
+2. Section V (System Architecture) — CloudFront & S3 in architecture diagram
+---------------------------------------------------------------------------
+CURRENT (inaccurate):
+  Figure 1 shows the request flow as:
+    User → CloudFront CDN → Amazon S3 / API Gateway → Lambda → DynamoDB
+
+  Figure 2 shows:
+    User Request → CloudFront CDN → API Gateway → Lambda → DynamoDB
+
+  The accompanying text states: "CloudFront caches the non-living web
+  content at distributed points along the edge" and "Amazon S3 is used
+  to store such static web assets like HTML, CSS, and JavaScript files."
+
+CHANGE:
+  The actual architecture is:
+    User → React SPA (Vite localhost:5173) → HTTP API Gateway → Lambda → DynamoDB
+
+  Update Figures 1 and 2 to remove CloudFront and S3, or label them as
+  "planned/future" components. Update the text to describe the actual
+  request flow: the React frontend sends API requests directly to the
+  HTTP API Gateway endpoint.
+
+
+---------------------------------------------------------------------------
+3. Section VI (Implementation) — REST API vs HTTP API
+---------------------------------------------------------------------------
+CURRENT (inaccurate):
+  "Amazon API Gateway was configured to expose RESTful API endpoints."
+
+CHANGE:
+  The system uses Amazon HTTP API Gateway (v2), not REST API Gateway.
+  These are different AWS products. HTTP API is 71% cheaper ($1.00 vs
+  $3.50 per million requests) and has lower latency (~5ms vs ~10-15ms
+  overhead). Table III at the end of the paper correctly says "HTTP API
+  Gateway", so the text in Section VI should match.
+
+  Reword to:
+  "Amazon HTTP API Gateway was configured to expose API endpoints.
+  HTTP API was chosen over REST API for its significantly lower cost
+  and reduced latency overhead."
+
+
+---------------------------------------------------------------------------
+4. Section VI (Implementation) — Vague runtime language
+---------------------------------------------------------------------------
+CURRENT (vague):
+  "The functions were written in a supported runtime environment and
+  deployed through the AWS console."
+
+CHANGE:
+  This should explicitly state the language and deployment method:
+  "The functions were written in Java 21 (Amazon Corretto) running on
+  ARM64 (AWS Graviton) architecture and deployed as ZIP packages
+  (~16 MB shadow JARs) via AWS SAM CLI."
+
+  Table III correctly lists Java 21 and ARM64, so the implementation
+  text should match.
+
+
+---------------------------------------------------------------------------
+5. Section VI (Implementation) — S3 upload claim
+---------------------------------------------------------------------------
+CURRENT (inaccurate):
+  "Static web resources including HTML, CSS, and JavaScript files were
+  uploaded to an Amazon S3 bucket configured for static website hosting."
+
+CHANGE:
+  This did not happen in the actual implementation. The frontend is a
+  React + TypeScript application built with Vite and served locally.
+  No S3 bucket for static hosting exists in the SAM template.
+
+  Reword to:
+  "The frontend was developed as a React 18 Single-Page Application
+  using TypeScript and Vite. During development and testing, the
+  frontend is served locally via the Vite development server on port
+  5173, with API requests proxied to the HTTP API Gateway endpoint."
+
+
+---------------------------------------------------------------------------
+6. Section VI (Implementation) — CloudFront integration claim
+---------------------------------------------------------------------------
+CURRENT (inaccurate):
+  "Amazon CloudFront was integrated as a content delivery network to
+  distribute static content through global edge locations."
+
+CHANGE:
+  CloudFront was not integrated in the actual deployment. Remove this
+  paragraph, or reword it as a future enhancement:
+  "In a production deployment, Amazon CloudFront can be integrated as
+  a CDN to distribute static content through global edge locations,
+  reducing latency for geographically distributed users. This is
+  listed as a future enhancement for the system."
+
+
+---------------------------------------------------------------------------
+7. Section VII (Security Considerations) — Authentication mechanism
+---------------------------------------------------------------------------
+CURRENT (incomplete):
+  The section discusses IAM roles, API Gateway throttling, DynamoDB
+  encryption, and CloudWatch monitoring. However, it does not mention
+  the actual user authentication mechanism used in the system.
+
+CHANGE:
+  Add a paragraph describing the actual authentication implementation:
+  "User authentication is implemented using BCrypt password hashing
+  (cost factor 10) for secure credential storage and JWT (JSON Web
+  Token) generation for session management. When a user logs in, the
+  auth-login Lambda function queries DynamoDB via a GSI for the user's
+  email, verifies the password using BCrypt, and returns a signed JWT
+  token. This custom authentication approach was chosen over AWS
+  Cognito to minimize cost and maintain simplicity within the AWS
+  Free Tier."
+
+  Table III correctly lists "BCrypt + JWT" as the authentication method,
+  so the security section should describe this in detail.
+
+
+---------------------------------------------------------------------------
+8. Section VIII (Performance Evaluation) — No actual numbers in text
+---------------------------------------------------------------------------
+CURRENT (theoretical only):
+  Section VIII discusses cold starts and warm invocations conceptually
+  but never references the actual benchmark data from Tables I and II.
+  The section reads like a literature review rather than a results
+  section.
+
+CHANGE:
+  Incorporate the measured results into the text. For example:
+
+  "As shown in Table I, the measured cold start latency was 6.95
+  seconds for the first invocation, which includes container
+  provisioning (~2.5s), JVM startup (~1.5s), static initialization
+  of the DynamoDB client and JWT configuration (918ms), and the
+  first request execution including BCrypt verification (~500ms).
+
+  Subsequent warm invocations (Table II) averaged 467ms request
+  execution time and 1.30 seconds end-to-end latency, representing
+  an 89% reduction from the cold start request time of 4,248ms.
+  The residual 467ms is dominated by BCrypt password verification
+  (cost factor 10), which is an intentional security measure rather
+  than infrastructure overhead. The actual Lambda platform overhead
+  on warm invocations is less than 30ms."
+
+  Also reference Table III in Section V or VI where the system
+  configuration is discussed.
+
+
+---------------------------------------------------------------------------
+9. Section X (Cost Analysis) — No actual cost figures
+---------------------------------------------------------------------------
+CURRENT (generic):
+  The cost analysis is entirely theoretical, describing the pay-as-you-use
+  model in general terms. No actual cost figures from the project are
+  provided.
+
+CHANGE:
+  Add the measured/projected cost data from the implementation:
+
+  "Under typical usage (~1,000 requests/day), the projected monthly
+  cost of the system is less than $0.05, composed of:
+  - AWS Lambda: $0.00 (within 1M free tier requests)
+  - DynamoDB: $0.00 (within 25 GB free tier storage)
+  - HTTP API Gateway: $0.00 (within 1M free tier requests)
+  - CloudWatch Logs: $0.00 (within 5 GB free tier ingestion)
+  This represents approximately 99% cost savings compared to an
+  equivalent EC2 t3.micro deployment at ~$8.50/month."
+
+
+---------------------------------------------------------------------------
+10. Section VIII (Performance Evaluation) — CloudFront performance claim
+---------------------------------------------------------------------------
+CURRENT (inaccurate):
+  "This is further improved by the integration of Amazon API Gateway
+  and Amazon CloudFront to improve the performance of the AWS
+  Serverless Web Portal. ... CloudFront is used to deliver the static
+  content at the edge with closer locations to users."
+
+CHANGE:
+  Remove the CloudFront performance claim since CloudFront was not
+  deployed or measured. Replace with a note about the actual network
+  latency observed:
+
+  "API Gateway adds approximately 5ms of overhead per request.
+  The measured end-to-end network round-trip (client to API Gateway
+  to Lambda and back) was approximately 800ms, which accounts for
+  62% of the warm start total latency. In a production deployment
+  with CloudFront and a geographically closer client, this network
+  component could be reduced to under 100ms."
+
+
+---------------------------------------------------------------------------
+11. Section XII (Conclusion) — No quantified results
+---------------------------------------------------------------------------
+CURRENT (generic):
+  The conclusion summarizes the architecture but does not cite any
+  specific measured results. It reads identically to a conclusion that
+  could be written without building the system.
+
+CHANGE:
+  Add quantified results to strengthen the conclusion:
+
+  "The experimental results demonstrate that the system achieves an
+  89% reduction in request latency from cold to warm invocations
+  (4,248ms to 467ms) through the static initialization pattern, with
+  sub-30ms Lambda overhead on warm invocations for non-cryptographic
+  endpoints. The system operates at near-zero cost (< $0.05/month)
+  under the AWS Free Tier, representing a ~99% saving over an
+  equivalent EC2 deployment. These results are summarized in
+  Tables I, II, and III."
+
+
+---------------------------------------------------------------------------
+12. Section VI (Implementation) — Frontend technology
+---------------------------------------------------------------------------
+CURRENT (inaccurate):
+  "static web resources including HTML, CSS, and JavaScript files"
+
+  This implies plain HTML/CSS/JS. The actual frontend is a React 18
+  Single-Page Application written in TypeScript, built with Vite,
+  using React Router DOM for routing and Axios for HTTP requests.
+
+CHANGE:
+  Update all references to the frontend to accurately describe the
+  technology stack:
+  "The frontend was developed as a React 18 Single-Page Application
+  using TypeScript 5.4 and Vite 5.2 as the build tool. React Router
+  DOM handles client-side routing, and Axios is used for HTTP API
+  communication. The AuthContext component manages JWT-based
+  authentication state across the application."
