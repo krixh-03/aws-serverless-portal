@@ -36,21 +36,44 @@ serverless-portal/
     performance.md       # Cold start and cost analysis
 ```
 
-## Run Locally (LocalStack)
+## Quick Start
+
+**Prerequisites:** Java 21, Node.js 18+, Docker Desktop, AWS CLI v2
 
 ```bash
-# Start LocalStack
-cd infrastructure && docker compose up -d
+git clone git@github.com:krixh-03/aws-serverless-portal.git
+cd aws-serverless-portal
+bash setup.sh
+```
 
-# Create table and seed demo user
-cd .. && ./scripts/create-local-table.sh && ./scripts/seed-local.sh
+This single script installs dependencies, builds the backend JARs, starts LocalStack, creates the DynamoDB table, and seeds a demo user. When it finishes, start the frontend:
+
+```bash
+cd frontend && npm run dev
+```
+
+Open http://localhost:5173 and log in with `demo@test.com` / `password`.
+
+## Run Locally (Manual Steps)
+
+If you prefer to run each step manually:
+
+```bash
+# Install frontend dependencies
+cd frontend && npm install
 
 # Build backend JARs
-cd backend/auth-service && ./gradlew shadowJar
+cd ../backend/auth-service && ./gradlew shadowJar
 cd ../content-service && ../auth-service/gradlew -p . shadowJar
 
+# Start LocalStack
+cd ../../infrastructure && docker compose up -d
+
+# Create table and seed demo user
+cd .. && bash scripts/create-local-table.sh && bash scripts/seed-local.sh
+
 # Run frontend
-cd ../../frontend && npm install && npm run dev
+cd frontend && npm run dev
 ```
 
 ## Deploy to AWS
