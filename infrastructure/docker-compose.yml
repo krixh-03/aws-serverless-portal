@@ -1,0 +1,19 @@
+version: "3.8"
+
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    ports:
+      - "4566:4566"
+      - "4510-4559:4510-4559"
+    environment:
+      - SERVICES=lambda,dynamodb,apigateway,s3,cloudwatch,secretsmanager
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - LAMBDA_EXECUTOR=docker-reuse
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      # Persist LocalStack state without blocking /tmp cleanup inside the container
+      - "./localstack-data:/var/lib/localstack"
+

@@ -1,0 +1,50 @@
+# Dependencies
+frontend/node_modules/
+node_modules/
+.venv/
+
+# Build output
+backend/auth-service/build/
+backend/content-service/build/
+backend/auth-service/.gradle/
+backend/content-service/.gradle/
+frontend/dist/
+infrastructure/.aws-sam/
+
+# IDE / Editor
+.cursor/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Environment files with secrets
+frontend/.env.local
+
+# SAM local
+infrastructure/localstack-data/
+
+# Vite cache
+frontend/node_modules/.vite/
+
+# AWS CLI installation (should be installed via system package manager)
+aws-cli/
+AWSCLIV2.pkg
+
+# Test payloads and temp output
+payload.json
+content-payload.json
+content-get-payload.json
+content-get.json
+content-post.json
+output.json
+choices.xml
+changes.txt
+changes_research.txt
+
+# Root lockfile (frontend has its own)
+/package-lock.json

@@ -1,0 +1,146 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Minimal serverless portal (auth + content + HTTP API)
+
+Globals:
+  Function:
+    Runtime: java21
+    Architectures:
+      - arm64
+    Timeout: 10
+    MemorySize: 512
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref PortalTable
+
+Resources:
+  PortalTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDbAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource:
+                  - !GetAtt PortalTable.Arn
+                  - !Sub '${PortalTable.Arn}/index/*'
+
+  HttpApiGateway:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+          - 'http://localhost:5173'
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+
+  AuthLoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-login
+      Handler: com.portal.auth.LoginHandler::handleRequest
+      CodeUri: ../backend/auth-service/build/libs/auth-service-all.jar
+      Role: !GetAtt LambdaRole.Arn
+      Events:
+        LoginApi:
+          Type: HttpApi
+          Properties:
+            Path: /auth/login
+            Method: POST
+            ApiId: !Ref HttpApiGateway
+            PayloadFormatVersion: '1.0'
+
+  AuthRegisterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: auth-register
+      Handler: com.portal.auth.RegisterHandler::handleRequest
+      CodeUri: ../backend/auth-service/build/libs/auth-service-all.jar
+      Role: !GetAtt LambdaRole.Arn
+      Events:
+        RegisterApi:
+          Type: HttpApi
+          Properties:
+            Path: /auth/register
+            Method: POST
+            ApiId: !Ref HttpApiGateway
+            PayloadFormatVersion: '1.0'
+
+  ContentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: content-service
+      Handler: com.portal.content.ContentHandler::handleRequest
+      CodeUri: ../backend/content-service/build/libs/content-service-all.jar
+      Role: !GetAtt LambdaRole.Arn
+      Events:
+        ContentGet:
+          Type: HttpApi
+          Properties:
+            Path: /content
+            Method: GET
+            ApiId: !Ref HttpApiGateway
+            PayloadFormatVersion: '1.0'
+        ContentPost:
+          Type: HttpApi
+          Properties:
+            Path: /content
+            Method: POST
+            ApiId: !Ref HttpApiGateway
+            PayloadFormatVersion: '1.0'
+
+Outputs:
+  ApiEndpoint:
+    Description: HTTP API base URL for the serverless portal
+    Value: !GetAtt HttpApiGateway.ApiEndpoint
+
