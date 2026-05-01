@@ -10,32 +10,32 @@ echo "=========================================="
 echo ""
 echo "API: $API_URL"
 echo ""
+echo "IMPORTANT: For accurate cold start results, make sure the Lambda"
+echo "has been idle for at least 15-20 minutes before running this script."
+echo "Do NOT open the app or call the API beforehand."
+echo ""
 
-echo "=== Cold start tests (60s gap to force cold start) ==="
-for i in 1 2 3; do
-  echo "--- Cold Run $i ---"
-  curl -s -w "\nTIME_TOTAL: %{time_total}s\n" \
-    -X POST "$API_URL/auth/login" \
-    -H "Content-Type: application/json" \
-    -d '{"email":"demo@test.com","password":"password"}'
-  echo ""
-  if [ "$i" -lt 3 ]; then
-    echo "(waiting 60s for container to go cold...)"
-    sleep 60
-  fi
-done
+echo "=== Cold start test (1 request to a cold Lambda) ==="
+echo "--- Cold Run ---"
+curl -s -w "\nTIME_TOTAL: %{time_total}s\n" \
+  -X POST "$API_URL/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo@test.com","password":"password"}'
+echo ""
 
 echo ""
-echo "=== Warm start tests (back-to-back, 2s gap) ==="
+echo "=== Warm start tests (3 back-to-back requests, 2s gap) ==="
 for i in 1 2 3; do
+  sleep 2
   echo "--- Warm Run $i ---"
   curl -s -w "\nTIME_TOTAL: %{time_total}s\n" \
     -X POST "$API_URL/auth/login" \
     -H "Content-Type: application/json" \
     -d '{"email":"demo@test.com","password":"password"}'
   echo ""
-  sleep 2
 done
 
 echo ""
-echo "Done. Copy the output above into docs/performance.md for your report."
+echo "Done. The cold run should show isColdStart:true with a high requestMs."
+echo "The warm runs should show isColdStart:false with much lower requestMs."
+echo "Copy the output above into docs/performance.md for your report."

@@ -16,8 +16,6 @@ PASSWORD_HASH="${PASSWORD_HASH:-$_DEFAULT_BCRYPT}"
 aws_cmd=(aws --region "$AWS_REGION")
 if [ -n "$AWS_PROFILE" ]; then
   aws_cmd+=(--profile "$AWS_PROFILE")
-else
-  unset AWS_PROFILE
 fi
 
 echo "Resolving DynamoDB table from CloudFormation stack..."
